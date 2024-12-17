@@ -227,6 +227,31 @@ export interface FlashbotsCancelBidResponseSuccess {
 
 export type FlashbotsCancelBidResponse = FlashbotsCancelBidResponseSuccess | RelayResponseError
 
+//https://docs.flashbots.net/flashbots-auction/advanced/rpc-endpoint#eth_sendprivatetransaction
+export type PrivateTransactionFlashbotsOptions = {
+  maxBlockNumber?: number,
+  simulationTimestamp?: number,
+  preferences?: {
+    fast: boolean
+    privacy?: {     // MEV-Share options; optional
+      hints?: Array< // data about tx to share w/ searchers on mev-share
+        "contract_address" |
+        "function_selector" |
+        "calldata" |
+        "logs" |
+        "hash"
+      >,
+      builders?: Array< // MEV-Share builders to exclusively receive bundles; optional
+        "default" |
+        "flashbots"
+      >,
+    },
+    validity?: {
+      refund?: Array<{ address: string, percent: any }> 
+    }
+  }
+}
+
 type RpcParams = Array<string[] | string | number | Record<string, unknown>>
 
 const TIMEOUT_MS = 5 * 60 * 1000
@@ -273,11 +298,11 @@ export class FlashbotsBundleProvider extends providers.JsonRpcProvider {
     const connectionInfo: ConnectionInfo =
       typeof connectionInfoOrUrl === 'string' || typeof connectionInfoOrUrl === 'undefined'
         ? {
-            url: connectionInfoOrUrl || DEFAULT_FLASHBOTS_RELAY
-          }
+          url: connectionInfoOrUrl || DEFAULT_FLASHBOTS_RELAY
+        }
         : {
-            ...connectionInfoOrUrl
-          }
+          ...connectionInfoOrUrl
+        }
     if (connectionInfo.headers === undefined) connectionInfo.headers = {}
     connectionInfo.throttleCallback = FlashbotsBundleProvider.throttleCallback
     const networkish: Networkish = {
@@ -473,10 +498,7 @@ export class FlashbotsBundleProvider extends providers.JsonRpcProvider {
    */
   public async sendPrivateTransaction(
     transaction: FlashbotsBundleTransaction | FlashbotsBundleRawTransaction,
-    opts?: {
-      maxBlockNumber?: number
-      simulationTimestamp?: number
-    }
+    opts?: PrivateTransactionFlashbotsOptions
   ): Promise<FlashbotsPrivateTransaction> {
     const startBlockNumberPromise = this.genericProvider.getBlockNumber()
 
@@ -489,7 +511,8 @@ export class FlashbotsBundleProvider extends providers.JsonRpcProvider {
 
     const params = {
       tx: signedTransaction,
-      maxBlockNumber: opts?.maxBlockNumber
+      maxBlockNumber: opts?.maxBlockNumber,
+      preferences: opts?.preferences
     }
     const request = JSON.stringify(this.prepareRelayRequest('eth_sendPrivateTransaction', [params]))
     const response = await this.request(request)
@@ -905,14 +928,14 @@ export class FlashbotsBundleProvider extends providers.JsonRpcProvider {
           'coinbase_transfer' in transactionDetail
             ? transactionDetail.coinbase_transfer
             : 'ethSentToCoinbase' in transactionDetail
-            ? transactionDetail.ethSentToCoinbase
-            : BigNumber.from(0)
+              ? transactionDetail.ethSentToCoinbase
+              : BigNumber.from(0)
         const totalMinerReward =
           'total_miner_reward' in transactionDetail
             ? BigNumber.from(transactionDetail.total_miner_reward)
             : 'coinbaseDiff' in transactionDetail
-            ? BigNumber.from(transactionDetail.coinbaseDiff)
-            : BigNumber.from(0)
+              ? BigNumber.from(transactionDetail.coinbaseDiff)
+              : BigNumber.from(0)
         const priorityFeeReceivedByMiner = totalMinerReward.sub(ethSentToCoinbase)
         return {
           gasUsed: acc.gasUsed + gasUsed,
