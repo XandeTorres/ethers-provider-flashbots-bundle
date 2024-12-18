@@ -233,15 +233,20 @@ export type PrivateTransactionFlashbotsOptions = {
   simulationTimestamp?: number,
   preferences?: {
     fast: boolean
-    privacy?: {     // MEV-Share options; optional
-      hints?: Array< // data about tx to share w/ searchers on mev-share
+    privacy?: {  
+      // MEV-Share options; optional   
+      hints?: Array< 
+        // data about tx to share w/ searchers on mev-share
         "contract_address" |
         "function_selector" |
         "calldata" |
         "logs" |
-        "hash"
+        "hash" |
+        "default_logs" |
+        "tx_hash"
       >,
-      builders?: Array< // MEV-Share builders to exclusively receive bundles; optional
+      builders?: Array< 
+        // MEV-Share builders to exclusively receive bundles; optional
         "default" |
         "flashbots"
       >,
